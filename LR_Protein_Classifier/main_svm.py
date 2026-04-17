@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.svm import SVC, LinearSVC
+from sklearn.preprocessing import StandardScaler
 
 class SVMModel:
     # todo:
@@ -35,30 +36,40 @@ class SVMModel:
         return self.model.score(data, targets)
 
 class SVMFromScratch:
-    # todo:
-    def __init__(self, lr=0.01, epochs=200, lam=0.01):
-        self.lr = lr
-        self.epochs = epochs
-        self.lam = lam
+    def __init__(self, lr=0.1, epochs=300, lam=0.01, batch_size=64, decay=0.005):
+        self.lr         = lr          # 初始学习率
+        self.epochs     = epochs      # 训练轮数
+        self.lam        = lam         # L2 正则化系数
+        self.batch_size = batch_size  # Mini-batch 大小
+        self.decay      = decay       # 学习率衰减率
+        self.scaler     = StandardScaler()
         self.w = None
         self.b = 0.0
 
     def train(self, train_data, train_targets):
-        n, d = train_data.shape
+        X = self.scaler.fit_transform(train_data)  # 特征标准化
+        n, d = X.shape
         y = np.where(train_targets == 1, 1, -1).astype(float)
         self.w = np.zeros(d)
         self.b = 0.0
-        for _ in range(self.epochs):
-            margins = y * (train_data @ self.w + self.b)
-            mask = margins < 1
-            dw = self.lam * self.w - (train_data[mask] * y[mask, None]).mean(axis=0) if mask.any() else self.lam * self.w
-            db = -y[mask].mean() if mask.any() else 0.0
-            self.w -= self.lr * dw
-            self.b -= self.lr * db
+        rng = np.random.default_rng(42)
+        for epoch in range(self.epochs):
+            lr_t = self.lr / (1.0 + self.decay * epoch)  # 学习率衰减
+            idx  = rng.permutation(n)
+            for start in range(0, n, self.batch_size):   # Mini-batch SGD
+                batch   = idx[start : start + self.batch_size]
+                Xb, yb  = X[batch], y[batch]
+                margins = yb * (Xb @ self.w + self.b)
+                mask    = margins < 1
+                dw = self.lam * self.w - (Xb[mask] * yb[mask, None]).mean(axis=0) if mask.any() else self.lam * self.w
+                db = -yb[mask].mean() if mask.any() else 0.0
+                self.w -= lr_t * dw
+                self.b -= lr_t * db
 
     def evaluate(self, data, targets):
-        y = np.where(targets == 1, 1, -1)
-        preds = np.sign(data @ self.w + self.b)
+        X     = self.scaler.transform(data)
+        y     = np.where(targets == 1, 1, -1)
+        preds = np.sign(X @ self.w + self.b)
         preds[preds == 0] = 1
         return np.mean(preds == y)
     

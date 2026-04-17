@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
 class LRModel:
     # todo:
@@ -37,10 +38,12 @@ class LRModel:
 
 
 class LRFromScratch:
-    # todo:
-    def __init__(self, lr=0.1, epochs=200):
-        self.lr = lr
-        self.epochs = epochs
+    def __init__(self, lr=0.5, epochs=300, lam=0.01, decay=0.01):
+        self.lr     = lr       # 初始学习率
+        self.epochs = epochs   # 训练轮数
+        self.lam    = lam      # L2 正则化系数
+        self.decay  = decay    # 学习率衰减率
+        self.scaler = StandardScaler()
         self.w = None
         self.b = 0.0
 
@@ -48,19 +51,20 @@ class LRFromScratch:
         return 1.0 / (1.0 + np.exp(-np.clip(z, -500, 500)))
 
     def train(self, train_data, train_targets):
-        n, d = train_data.shape
+        X = self.scaler.fit_transform(train_data)  # 特征标准化
+        n, d = X.shape
         self.w = np.zeros(d)
         self.b = 0.0
-        for _ in range(self.epochs):
-            z = train_data @ self.w + self.b
-            y_hat = self._sigmoid(z)
-            diff = y_hat - train_targets
-            self.w -= self.lr * (train_data.T @ diff) / n
-            self.b -= self.lr * diff.mean()
+        for epoch in range(self.epochs):
+            lr_t  = self.lr / (1.0 + self.decay * epoch)  # 学习率衰减
+            y_hat = self._sigmoid(X @ self.w + self.b)
+            diff  = y_hat - train_targets
+            self.w -= lr_t * ((X.T @ diff) / n + self.lam * self.w)  # L2 正则
+            self.b -= lr_t * diff.mean()
 
     def evaluate(self, data, targets):
-        z = data @ self.w + self.b
-        preds = (self._sigmoid(z) >= 0.5).astype(int)
+        X     = self.scaler.transform(data)
+        preds = (self._sigmoid(X @ self.w + self.b) >= 0.5).astype(int)
         return np.mean(preds == targets)
 
 

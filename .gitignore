@@ -4,3 +4,22 @@
 *.npy
 *.cast
 *.zip
+
+# Training materials (LR_Protein_Classifier)
+LR_Protein_Classifier/data/
+LR_Protein_Classifier/pic/
+
+# Training artifacts and caches (global)
+**/__pycache__/
+**/*.pth
+
+# Training materials (Street_Character_Recognition)
+Street_Character_Recognition/dataset/
+Street_Character_Recognition/checkpoints/
+Street_Character_Recognition/runs/
+Street_Character_Recognition/*.pt
+Street_Character_Recognition/result.csv
+Street_Character_Recognition/mchar_data_list_*.csv
+
+# Nested repository (avoid accidental gitlink commit)
+Image_Classifier/
